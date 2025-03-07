@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login - Chicken Farm Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    // WebsimSocket setup
+    const room = new WebsimSocket();
+  </script>
+  <style>
+    .admin-login-container {
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #f8f9fa;
+    }
+    
+    body.dark-mode .admin-login-container {
+      background-color: #222;
+    }
+    
+    .admin-login-form {
+      background-color: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      width: 90%;
+      max-width: 400px;
+    }
+    
+    body.dark-mode .admin-login-form {
+      background-color: #333;
+      color: #f0f0f0;
+    }
+    
+    .return-link {
+      margin-top: 1rem;
+      text-align: center;
+    }
+    
+    .return-link a {
+      color: #4a7c59;
+      text-decoration: none;
+    }
+    
+    .return-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+  <script src="database.js"></script>
+</head>
+<body>
+  <div class="admin-login-container">
+    <div class="admin-login-form">
+      <h2>Admin Login</h2>
+      <form id="admin-login-form">
+        <div class="form-group">
+          <label for="admin-username">Username:</label>
+          <input type="text" id="admin-username" required>
+        </div>
+        <div class="form-group">
+          <label for="admin-password">Password:</label>
+          <input type="password" id="admin-password" required>
+        </div>
+        <button type="submit" class="submit-btn">Login</button>
+      </form>
+      <p class="return-link"><a href="index.html">Return to main page</a></p>
+      <div id="admin-notification" class="notification">
+        <p id="admin-notification-text"></p>
+        <button id="close-admin-notification"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const adminLoginForm = document.getElementById('admin-login-form');
+      
+      window.dbManager = await DatabaseManager.init();
+      
+      adminLoginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('admin-username').value;
+        const password = document.getElementById('admin-password').value;
+        
+        if (username === 'alexis02' && password === 'alektit02') {
+          let adminUser = null;
+          const users = await window.dbManager.getUsers();
+          adminUser = users.find(u => u.email === 'alexis02');
+          
+          if (!adminUser) {
+            adminUser = await window.dbManager.createUser({
+              name: 'Admin',
+              email: 'alexis02',
+              password: 'alektit02',
+              isAdmin: true,
+              registerDate: new Date().toISOString(),
+              lastLogin: new Date().toISOString()
+            });
+          } else {
+            adminUser = await window.dbManager.updateUserLastLogin(adminUser.id);
+          }
+          
+          const deviceInfo = {
+            userAgent: navigator.userAgent,
+            deviceName: getDeviceName(),
+          };
+          await window.dbManager.registerDevice(adminUser.id, deviceInfo);
+          
+          localStorage.setItem('chickenTrackerCurrentUser', JSON.stringify(adminUser));
+          
+          await window.dbManager.createLog({
+            userId: adminUser.id,
+            action: 'Admin logged in',
+            deviceInfo: deviceInfo.deviceName,
+            timestamp: new Date().toISOString()
+          });
+          
+          window.location.href = 'admin_dashboard.html';
+        } else {
+          showAdminNotification('Invalid admin credentials');
+        }
+      });
+      
+      function getDeviceName() {
+        const userAgent = navigator.userAgent;
+        let deviceName = 'Unknown Device';
+        
+        if (/Android/i.test(userAgent)) {
+          deviceName = 'Android Device';
+        } else if (/iPhone|iPad|iPod/i.test(userAgent)) {
+          deviceName = 'iOS Device';
+        } else if (/Windows/i.test(userAgent)) {
+          deviceName = 'Windows Device';
+        } else if (/Mac/i.test(userAgent)) {
+          deviceName = 'Mac Device';
+        } else if (/Linux/i.test(userAgent)) {
+          deviceName = 'Linux Device';
+        }
+        
+        return deviceName;
+      }
+      
+      const darkModePreference = localStorage.getItem('darkMode');
+      if (darkModePreference === 'true') {
+        document.body.classList.add('dark-mode');
+      }
+      
+      function showAdminNotification(message) {
+        const notification = document.getElementById('admin-notification');
+        const notificationText = document.getElementById('admin-notification-text');
+        
+        notificationText.textContent = message;
+        notification.classList.add('show');
+        
+        setTimeout(() => {
+          notification.classList.remove('show');
+        }, 5000);
+      }
+      
+      document.getElementById('close-admin-notification')?.addEventListener('click', () => {
+        document.getElementById('admin-notification').classList.remove('show');
+      });
+    });
+  </script>
+</body>
+</html>

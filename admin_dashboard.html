@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Chicken Farm Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .admin-dashboard {
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    body.dark-mode .admin-header {
+      border-bottom-color: #444;
+    }
+    
+    .admin-controls {
+      display: flex;
+      gap: 1rem;
+    }
+    
+    .admin-sections {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 2rem;
+    }
+    
+    .admin-card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 1.5rem;
+    }
+    
+    body.dark-mode .admin-card {
+      background-color: #333;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .code-container {
+      margin-top: 1rem;
+    }
+    
+    .code-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-top: 1rem;
+    }
+    
+    body.dark-mode .code-list {
+      border-color: #444;
+    }
+    
+    .code-item {
+      padding: 0.5rem;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    body.dark-mode .code-item {
+      border-bottom-color: #444;
+    }
+    
+    .code-item:last-child {
+      border-bottom: none;
+    }
+    
+    .code-badge {
+      background-color: #4a7c59;
+      color: white;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    
+    .code-badge.used {
+      background-color: #777;
+    }
+    
+    .data-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .user-item, .log-item {
+      background-color: #f9f9f9;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+    
+    body.dark-mode .user-item, 
+    body.dark-mode .log-item {
+      background-color: #2a2a2a;
+    }
+    
+    .admin-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+      background-color: #4a7c59;
+      color: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .stat-card h3 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: white;
+    }
+    
+    .device-item {
+      background-color: #f9f9f9;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+    
+    body.dark-mode .device-item {
+      background-color: #2a2a2a;
+    }
+    
+    .device-status {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #4CAF50;
+      margin-right: 5px;
+    }
+    
+    .device-status.inactive {
+      background-color: #9e9e9e;
+    }
+    
+    @media (max-width: 768px) {
+      .admin-stats {
+        grid-template-columns: 1fr;
+      }
+      
+      .admin-sections {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Admin Dashboard</h1>
+    <div class="header-controls">
+      <button id="dark-mode-toggle" class="mode-toggle"><i class="fas fa-moon"></i></button>
+      <div class="user-menu">
+        <span id="current-user">Admin</span>
+        <button id="return-main" class="logout-btn" title="Return to main page"><i class="fas fa-home"></i></button>
+        <button id="admin-logout-btn" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+      </div>
+    </div>
+  </header>
+  
+  <div class="admin-dashboard">
+    <div class="admin-header">
+      <h2>Farm Management System</h2>
+      <div class="admin-controls">
+        <button class="action-btn" id="refresh-data"><i class="fas fa-sync"></i> Refresh Data</button>
+      </div>
+    </div>
+    
+    <div class="admin-stats">
+      <div class="stat-card">
+        <h3 id="user-count">0</h3>
+        <p>Total Users</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="active-codes">0</h3>
+        <p>Active Codes</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="total-logs">0</h3>
+        <p>Activity Logs</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="active-devices">0</h3>
+        <p>Active Devices</p>
+      </div>
+    </div>
+    
+    <div class="admin-sections">
+      <div class="admin-card">
+        <h3>Generate Activation Code</h3>
+        <form id="admin-activation-form">
+          <div class="form-group">
+            <label for="admin-code-email">User Email:</label>
+            <input type="email" id="admin-code-email" required>
+          </div>
+          <button type="submit" class="submit-btn">Generate Code</button>
+        </form>
+        <div id="admin-generated-code" class="generated-code"></div>
+        <div class="code-container">
+          <h4>Generated Codes</h4>
+          <div id="codes-list" class="code-list"></div>
+        </div>
+      </div>
+      
+      <div class="admin-card">
+        <h3>Registered Users</h3>
+        <div id="admin-users-list" class="data-list"></div>
+      </div>
+      
+      <div class="admin-card">
+        <h3>Recent Activity Logs</h3>
+        <div id="admin-activity-logs" class="data-list"></div>
+      </div>
+      
+      <div class="admin-card">
+        <h3>User Devices</h3>
+        <div id="admin-devices-list" class="data-list"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="admin-dashboard-notification" class="notification">
+    <p id="admin-dashboard-notification-text"></p>
+    <button id="close-admin-dashboard-notification"><i class="fas fa-times"></i></button>
+  </div>
+  
+  <template id="admin-user-template">
+    <div class="user-item">
+      <div class="admin-item-header">
+        <h4 class="admin-user-name"></h4>
+        <span class="admin-user-email"></span>
+      </div>
+      <div class="admin-item-details">
+        <p><strong>Registered:</strong> <span class="admin-register-date"></span></p>
+        <p><strong>Last Login:</strong> <span class="admin-last-login"></span></p>
+      </div>
+    </div>
+  </template>
+
+  <template id="admin-log-template">
+    <div class="log-item">
+      <div class="admin-item-header">
+        <h4 class="admin-log-user"></h4>
+        <span class="admin-log-date"></span>
+      </div>
+      <div class="admin-item-details">
+        <p class="admin-log-action"></p>
+      </div>
+    </div>
+  </template>
+
+  <template id="code-template">
+    <div class="code-item">
+      <div>
+        <span class="code-badge"></span>
+        <span class="code-email"></span>
+      </div>
+      <span class="code-date"></span>
+    </div>
+  </template>
+  
+  <template id="device-template">
+    <div class="device-item">
+      <div class="admin-item-header">
+        <h4><span class="device-status"></span> <span class="device-name"></span></h4>
+        <span class="device-user"></span>
+      </div>
+      <div class="admin-item-details">
+        <p><strong>User Agent:</strong> <span class="device-agent"></span></p>
+        <p><strong>First Seen:</strong> <span class="device-first-seen"></span></p>
+        <p><strong>Last Seen:</strong> <span class="device-last-seen"></span></p>
+      </div>
+    </div>
+  </template>
+  
+  <script>
+    // WebsimSocket setup
+    const room = new WebsimSocket();
+  </script>
+  <script src="database.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Check if admin is logged in
+      const loggedInUser = localStorage.getItem('chickenTrackerCurrentUser');
+      
+      if (!loggedInUser) {
+        window.location.href = 'admin.html';
+        return;
+      }
+      
+      const user = JSON.parse(loggedInUser);
+      if (!user.isAdmin) {
+        window.location.href = 'index.html';
+        return;
+      }
+      
+      // Initialize database
+      window.dbManager = DatabaseManager.init();
+      
+      // Set dark mode if previously used
+      if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+      }
+      
+      // Admin functions
+      const AdminDashboard = {
+        async init() {
+          await this.loadData();
+          this.setupEventListeners();
+          this.renderAllData();
+          this.updateStats();
+        },
+        
+        async loadData() {
+          this.users = await dbManager.getUsers();
+          this.activationCodes = await dbManager.getCodes();
+          this.activityLogs = await dbManager.getLogs();
+          this.devices = await dbManager.getDevices();
+        },
+        
+        setupEventListeners() {
+          // Dark mode toggle
+          document.getElementById('dark-mode-toggle').addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+          });
+          
+          // Logout
+          document.getElementById('admin-logout-btn').addEventListener('click', () => {
+            this.logActivity(user.id, 'Admin logged out');
+            localStorage.removeItem('chickenTrackerCurrentUser');
+            window.location.href = 'admin.html';
+          });
+          
+          // Return to main page
+          document.getElementById('return-main').addEventListener('click', () => {
+            window.location.href = 'index.html';
+          });
+          
+          // Refresh data
+          document.getElementById('refresh-data').addEventListener('click', () => {
+            this.loadData();
+            this.renderAllData();
+            this.updateStats();
+            this.showNotification('Data refreshed');
+          });
+          
+          // Generate activation code
+          document.getElementById('admin-activation-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.generateActivationCode();
+          });
+          
+          // Close notification
+          document.getElementById('close-admin-dashboard-notification').addEventListener('click', () => {
+            document.getElementById('admin-dashboard-notification').classList.remove('show');
+          });
+        },
+        
+        async renderAllData() {
+          this.renderUsersList();
+          this.renderActivityLogs();
+          this.renderCodesList();
+          this.renderDevicesList();
+        },
+        
+        renderUsersList() {
+          const usersList = document.getElementById('admin-users-list');
+          usersList.innerHTML = '';
+          
+          const template = document.getElementById('admin-user-template');
+          
+          if (this.users.length === 0) {
+            usersList.innerHTML = '<p class="empty-message">No users registered</p>';
+            return;
+          }
+          
+          this.users.forEach(user => {
+            const clone = template.content.cloneNode(true);
+            
+            clone.querySelector('.admin-user-name').textContent = user.name;
+            clone.querySelector('.admin-user-email').textContent = user.email;
+            clone.querySelector('.admin-register-date').textContent = 
+              new Date(user.registerDate).toLocaleString();
+            clone.querySelector('.admin-last-login').textContent = 
+              new Date(user.lastLogin).toLocaleString();
+            
+            usersList.appendChild(clone);
+          });
+        },
+        
+        renderActivityLogs() {
+          const logsList = document.getElementById('admin-activity-logs');
+          logsList.innerHTML = '';
+          
+          const template = document.getElementById('admin-log-template');
+          
+          if (this.activityLogs.length === 0) {
+            logsList.innerHTML = '<p class="empty-message">No activity logs</p>';
+            return;
+          }
+          
+          // Sort logs by date (newest first)
+          const sortedLogs = [...this.activityLogs].sort((a, b) => 
+            new Date(b.timestamp) - new Date(a.timestamp));
+          
+          // Show only the last 50 logs for performance
+          const recentLogs = sortedLogs.slice(0, 50);
+          
+          recentLogs.forEach(log => {
+            const clone = template.content.cloneNode(true);
+            
+            // Find user name
+            const logUser = this.users.find(u => u.id === log.userId);
+            const userName = logUser ? logUser.name : 'Unknown User';
+            
+            clone.querySelector('.admin-log-user').textContent = userName;
+            clone.querySelector('.admin-log-date').textContent = 
+              new Date(log.timestamp).toLocaleString();
+            clone.querySelector('.admin-log-action').textContent = log.action;
+            
+            logsList.appendChild(clone);
+          });
+        },
+        
+        renderCodesList() {
+          const codesList = document.getElementById('codes-list');
+          codesList.innerHTML = '';
+          
+          const template = document.getElementById('code-template');
+          
+          if (this.activationCodes.length === 0) {
+            codesList.innerHTML = '<p class="empty-message">No codes generated</p>';
+            return;
+          }
+          
+          // Sort codes by date (newest first)
+          const sortedCodes = [...this.activationCodes].sort((a, b) => 
+            new Date(b.created) - new Date(a.created));
+            
+          sortedCodes.forEach(code => {
+            const clone = template.content.cloneNode(true);
+            
+            const badgeEl = clone.querySelector('.code-badge');
+            badgeEl.textContent = code.code;
+            if (code.used) {
+              badgeEl.classList.add('used');
+              badgeEl.title = 'Used';
+            } else {
+              badgeEl.title = 'Active';
+            }
+            
+            clone.querySelector('.code-email').textContent = code.email;
+            clone.querySelector('.code-date').textContent = 
+              new Date(code.created).toLocaleDateString();
+            
+            codesList.appendChild(clone);
+          });
+        },
+        
+        renderDevicesList() {
+          const devicesList = document.getElementById('admin-devices-list');
+          devicesList.innerHTML = '';
+          
+          const template = document.getElementById('device-template');
+          
+          if (this.devices.length === 0) {
+            devicesList.innerHTML = '<p class="empty-message">No devices registered</p>';
+            return;
+          }
+          
+          // Sort devices by last seen date (most recent first)
+          const sortedDevices = [...this.devices].sort((a, b) => 
+            new Date(b.lastSeen) - new Date(a.lastSeen));
+            
+          sortedDevices.forEach(device => {
+            const clone = template.content.cloneNode(true);
+            
+            // Find user name
+            const deviceUser = this.users.find(u => u.id === device.userId);
+            const userName = deviceUser ? deviceUser.name : 'Unknown User';
+            
+            clone.querySelector('.device-name').textContent = device.deviceName;
+            clone.querySelector('.device-user').textContent = userName;
+            clone.querySelector('.device-agent').textContent = device.userAgent;
+            clone.querySelector('.device-first-seen').textContent = 
+              new Date(device.firstSeen).toLocaleString();
+            clone.querySelector('.device-last-seen').textContent = 
+              new Date(device.lastSeen).toLocaleString();
+            
+            // Check if device is recently active (within last hour)
+            const lastSeen = new Date(device.lastSeen);
+            const oneHourAgo = new Date();
+            oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+            
+            if (lastSeen > oneHourAgo) {
+              clone.querySelector('.device-status').classList.remove('inactive');
+            } else {
+              clone.querySelector('.device-status').classList.add('inactive');
+            }
+            
+            devicesList.appendChild(clone);
+          });
+        },
+        
+        async generateActivationCode() {
+          const email = document.getElementById('admin-code-email').value;
+          
+          // Generate random 8-character code
+          const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+          let code = '';
+          for (let i = 0; i < 8; i++) {
+            code += characters.charAt(Math.floor(Math.random() * characters.length));
+          }
+          
+          const activationCode = {
+            code,
+            email,
+            created: new Date().toISOString(),
+            used: false
+          };
+          
+          await dbManager.createCode(activationCode);
+          this.activationCodes.push(activationCode);
+          
+          // Display the code
+          document.getElementById('admin-generated-code').textContent = code;
+          
+          // Refresh codes list
+          this.renderCodesList();
+          this.updateStats();
+          
+          // Log activity
+          const deviceInfo = {
+            userAgent: navigator.userAgent,
+            deviceName: this.getDeviceName(),
+          };
+          
+          await dbManager.createLog({
+            userId: user.id,
+            action: `Generated activation code for ${email}`,
+            deviceInfo: deviceInfo.deviceName,
+            timestamp: new Date().toISOString()
+          });
+          
+          this.showNotification(`Code generated for ${email}: ${code}`);
+        },
+        
+        updateStats() {
+          document.getElementById('user-count').textContent = this.users.length;
+          
+          const activeCodes = this.activationCodes.filter(code => !code.used).length;
+          document.getElementById('active-codes').textContent = activeCodes;
+          
+          document.getElementById('total-logs').textContent = this.activityLogs.length;
+          
+          // Count active devices (seen in the last 24 hours)
+          const oneDayAgo = new Date();
+          oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+          
+          const activeDevices = this.devices.filter(device => 
+            new Date(device.lastSeen) > oneDayAgo).length;
+          
+          document.getElementById('active-devices').textContent = activeDevices;
+        },
+        
+        getDeviceName() {
+          const userAgent = navigator.userAgent;
+          let deviceName = 'Unknown Device';
+          
+          if (/Android/i.test(userAgent)) {
+            deviceName = 'Android Device';
+          } else if (/iPhone|iPad|iPod/i.test(userAgent)) {
+            deviceName = 'iOS Device';
+          } else if (/Windows/i.test(userAgent)) {
+            deviceName = 'Windows Device';
+          } else if (/Mac/i.test(userAgent)) {
+            deviceName = 'Mac Device';
+          } else if (/Linux/i.test(userAgent)) {
+            deviceName = 'Linux Device';
+          }
+          
+          return deviceName;
+        },
+        
+        logActivity(userId, action) {
+          const log = {
+            id: Date.now(),
+            userId,
+            action,
+            timestamp: new Date()
+          };
+          
+          this.activityLogs.push(log);
+          
+          // Keep only the last 100 logs
+          if (this.activityLogs.length > 100) {
+            this.activityLogs = this.activityLogs.slice(-100);
+          }
+          
+          dbManager.createLog(log);
+          this.renderActivityLogs();
+          this.updateStats();
+        },
+        
+        showNotification(message) {
+          const notification = document.getElementById('admin-dashboard-notification');
+          const notificationText = document.getElementById('admin-dashboard-notification-text');
+          
+          notificationText.textContent = message;
+          notification.classList.add('show');
+          
+          // Auto hide after 5 seconds
+          setTimeout(() => {
+            notification.classList.remove('show');
+          }, 5000);
+        }
+      };
+      
+      // Initialize admin dashboard
+      await AdminDashboard.init();
+      
+      // Set up real-time updates
+      dbManager.room.collection('users').subscribe(() => {
+        AdminDashboard.loadData().then(() => {
+          AdminDashboard.renderUsersList();
+          AdminDashboard.updateStats();
+        });
+      });
+      
+      dbManager.room.collection('activityLogs').subscribe(() => {
+        AdminDashboard.loadData().then(() => {
+          AdminDashboard.renderActivityLogs();
+          AdminDashboard.updateStats();
+        });
+      });
+      
+      dbManager.room.collection('devices').subscribe(() => {
+        AdminDashboard.loadData().then(() => {
+          AdminDashboard.renderDevicesList();
+          AdminDashboard.updateStats();
+        });
+      });
+    });
+  </script>
+</body>
+</html>

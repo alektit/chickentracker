@@ -1,0 +1,343 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chicken Farm Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    // WebsimSocket setup
+    const room = new WebsimSocket();
+  </script>
+  <script src="database.js"></script>
+</head>
+<body>
+  <!-- Auth screens -->
+  <div id="auth-container" class="auth-container">
+    <!-- Login Form -->
+    <div id="login-screen" class="auth-screen active">
+      <h2>Login</h2>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-email">Email:</label>
+          <input type="email" id="login-email" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password:</label>
+          <input type="password" id="login-password" required>
+        </div>
+        <button type="submit" class="submit-btn">Login</button>
+      </form>
+      <p class="auth-link">Don't have an account? <a href="#" id="show-register">Register</a></p>
+      <p class="auth-link admin-link">Admin? <a href="#" id="admin-login-btn">Admin Login</a></p>
+    </div>
+    
+    <!-- Register Form -->
+    <div id="register-screen" class="auth-screen">
+      <h2>Register</h2>
+      <form id="register-form">
+        <div class="form-group">
+          <label for="register-name">Full Name:</label>
+          <input type="text" id="register-name" required>
+        </div>
+        <div class="form-group">
+          <label for="register-email">Email:</label>
+          <input type="email" id="register-email" required>
+        </div>
+        <div class="form-group">
+          <label for="register-password">Password:</label>
+          <input type="password" id="register-password" required>
+        </div>
+        <div class="form-group">
+          <label for="activation-code">Activation Code:</label>
+          <input type="text" id="activation-code" required>
+        </div>
+        <button type="submit" class="submit-btn">Register</button>
+      </form>
+      <p class="auth-link">Already have an account? <a href="#" id="show-login">Login</a></p>
+    </div>
+  </div>
+
+  <header>
+    <h1>Chicken Farm Tracker</h1>
+    <div class="header-controls">
+      <button id="dark-mode-toggle" class="mode-toggle"><i class="fas fa-moon"></i></button>
+      <div class="user-menu">
+        <span id="current-user">Guest</span>
+        <button id="logout-btn" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+      </div>
+    </div>
+    <nav>
+      <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+      <button class="nav-btn" data-view="incubation">Incubation</button>
+      <button class="nav-btn" data-view="medication">Medication</button>
+      <button class="nav-btn" data-view="feeding">Feeding</button>
+      <button class="nav-btn" data-view="calendar">Calendar</button>
+      <button class="nav-btn admin-only" data-view="admin">Admin</button>
+    </nav>
+  </header>
+  
+  <main>
+    <!-- Dashboard View -->
+    <section id="dashboard" class="view active">
+      <h2>Dashboard</h2>
+      <div class="dashboard-cards">
+        <div class="card">
+          <h3>Active Incubations</h3>
+          <p id="active-incubations">0</p>
+          <button class="action-btn" id="add-incubation-btn">Add New</button>
+        </div>
+        <div class="card">
+          <h3>Upcoming Medications</h3>
+          <p id="upcoming-medications">0</p>
+          <button class="action-btn" id="add-medication-btn">Add New</button>
+        </div>
+        <div class="card">
+          <h3>Today's Tasks</h3>
+          <ul id="today-tasks" class="task-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Incubation View -->
+    <section id="incubation" class="view">
+      <h2>Egg Incubation Tracker</h2>
+      <form id="incubation-form">
+        <div class="form-group">
+          <label for="batch-name">Batch Name:</label>
+          <input type="text" id="batch-name" required>
+        </div>
+        <div class="form-group">
+          <label for="start-date">Start Date:</label>
+          <input type="date" id="start-date" required>
+        </div>
+        <div class="form-group">
+          <label for="egg-count">Number of Eggs:</label>
+          <input type="number" id="egg-count" min="1" required>
+        </div>
+        <div class="form-group">
+          <label for="breed">Breed:</label>
+          <input type="text" id="breed">
+        </div>
+        <button type="submit" class="submit-btn">Add Incubation</button>
+      </form>
+      
+      <div class="list-container">
+        <h3>Active Incubations</h3>
+        <div id="incubation-list" class="list"></div>
+      </div>
+      <div class="list-container">
+        <h3>Incubation History</h3>
+        <div id="incubation-history" class="list"></div>
+      </div>
+    </section>
+
+    <!-- Medication View -->
+    <section id="medication" class="view">
+      <h2>Medication & Vaccination Tracker</h2>
+      <form id="medication-form">
+        <div class="form-group">
+          <label for="medication-name">Medication/Vaccine Name:</label>
+          <input type="text" id="medication-name" required>
+        </div>
+        <div class="form-group">
+          <label for="medication-date">Date Given:</label>
+          <input type="date" id="medication-date" required>
+        </div>
+        <div class="form-group">
+          <label for="medication-notes">Notes:</label>
+          <textarea id="medication-notes"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="next-schedule">Next Schedule:</label>
+          <input type="date" id="next-schedule">
+        </div>
+        <button type="submit" class="submit-btn">Add Record</button>
+      </form>
+      
+      <div class="list-container">
+        <h3>Medication Records</h3>
+        <div id="medication-list" class="list"></div>
+      </div>
+    </section>
+
+    <!-- Feeding View -->
+    <section id="feeding" class="view">
+      <h2>Feeding & Growth Tracker</h2>
+      <form id="feeding-form">
+        <div class="form-group">
+          <label for="feed-date">Date:</label>
+          <input type="date" id="feed-date" required>
+        </div>
+        <div class="form-group">
+          <label for="feed-type">Feed Type:</label>
+          <input type="text" id="feed-type" required>
+        </div>
+        <div class="form-group">
+          <label for="feed-amount">Amount (kg):</label>
+          <input type="number" id="feed-amount" step="0.01" min="0" required>
+        </div>
+        <div class="form-group">
+          <label for="feed-notes">Growth Notes:</label>
+          <textarea id="feed-notes"></textarea>
+        </div>
+        <button type="submit" class="submit-btn">Add Record</button>
+      </form>
+      
+      <div class="card feed-summary-card">
+        <h3>Feed Usage Summary</h3>
+        <div id="feed-summary">
+          <p><strong>Today:</strong> <span id="daily-feed">0.00 kg</span></p>
+          <p><strong>This Week:</strong> <span id="weekly-feed">0.00 kg</span></p>
+          <p><strong>This Month:</strong> <span id="monthly-feed">0.00 kg</span></p>
+        </div>
+      </div>
+      
+      <div class="list-container">
+        <h3>Feeding Records</h3>
+        <div id="feeding-list" class="list"></div>
+      </div>
+    </section>
+
+    <!-- Calendar View -->
+    <section id="calendar" class="view">
+      <h2>Calendar</h2>
+      <div class="calendar-controls">
+        <button id="prev-month"><i class="fas fa-chevron-left"></i></button>
+        <h3 id="current-month-year">Month Year</h3>
+        <button id="next-month"><i class="fas fa-chevron-right"></i></button>
+      </div>
+      <div class="calendar-grid">
+        <div class="day-header">Sun</div>
+        <div class="day-header">Mon</div>
+        <div class="day-header">Tue</div>
+        <div class="day-header">Wed</div>
+        <div class="day-header">Thu</div>
+        <div class="day-header">Fri</div>
+        <div class="day-header">Sat</div>
+        <div id="calendar-days" class="calendar-days"></div>
+      </div>
+      <div id="day-details" class="day-details">
+        <h3 id="selected-date">No date selected</h3>
+        <ul id="date-tasks" class="task-list"></ul>
+      </div>
+    </section>
+
+    <!-- Admin View (new) -->
+    <section id="admin" class="view">
+      <h2>Admin Panel</h2>
+      <div class="admin-actions">
+        <div class="card">
+          <h3>Generate Activation Code</h3>
+          <form id="activation-form">
+            <div class="form-group">
+              <label for="code-email">User Email:</label>
+              <input type="email" id="code-email" required>
+            </div>
+            <button type="submit" class="submit-btn">Generate Code</button>
+          </form>
+          <div id="generated-code" class="generated-code"></div>
+        </div>
+        
+        <div class="card">
+          <h3>Registered Users</h3>
+          <div id="users-list" class="admin-list"></div>
+        </div>
+        
+        <div class="card">
+          <h3>User Activity Logs</h3>
+          <div id="activity-logs" class="admin-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="notification" class="notification">
+    <p id="notification-text"></p>
+    <button id="close-notification"><i class="fas fa-times"></i></button>
+  </div>
+
+  <template id="incubation-template">
+    <div class="item">
+      <div class="item-header">
+        <h4 class="batch-name"></h4>
+        <span class="days-left"></span>
+      </div>
+      <div class="item-details">
+        <p><strong>Start Date:</strong> <span class="start-date"></span></p>
+        <p><strong>Hatch Date:</strong> <span class="hatch-date"></span></p>
+        <p><strong>Eggs:</strong> <span class="egg-count"></span></p>
+        <p><strong>Breed:</strong> <span class="breed"></span></p>
+        <div class="progress-container">
+          <div class="progress-bar"></div>
+          <span class="progress-text"></span>
+        </div>
+      </div>
+      <div class="item-actions">
+        <button class="delete-btn"><i class="fas fa-trash"></i></button>
+        <button class="complete-btn"><i class="fas fa-check"></i></button>
+      </div>
+    </div>
+  </template>
+
+  <template id="medication-template">
+    <div class="item">
+      <div class="item-header">
+        <h4 class="medication-name"></h4>
+        <span class="next-date"></span>
+      </div>
+      <div class="item-details">
+        <p><strong>Date Given:</strong> <span class="medication-date"></span></p>
+        <p><strong>Next Schedule:</strong> <span class="next-schedule"></span></p>
+        <p><strong>Notes:</strong> <span class="medication-notes"></span></p>
+      </div>
+      <div class="item-actions">
+        <button class="delete-btn"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+  </template>
+
+  <template id="feeding-template">
+    <div class="item">
+      <div class="item-header">
+        <h4 class="feed-type"></h4>
+        <span class="feed-date"></span>
+      </div>
+      <div class="item-details">
+        <p><strong>Amount:</strong> <span class="feed-amount"></span> kg</p>
+        <p><strong>Notes:</strong> <span class="feed-notes"></span></p>
+      </div>
+      <div class="item-actions">
+        <button class="delete-btn"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+  </template>
+
+  <template id="user-template">
+    <div class="admin-item">
+      <div class="admin-item-header">
+        <h4 class="user-name"></h4>
+        <span class="user-email"></span>
+      </div>
+      <div class="admin-item-details">
+        <p><strong>Registered:</strong> <span class="register-date"></span></p>
+        <p><strong>Last Login:</strong> <span class="last-login"></span></p>
+      </div>
+    </div>
+  </template>
+
+  <template id="log-template">
+    <div class="admin-item">
+      <div class="admin-item-header">
+        <h4 class="log-user"></h4>
+        <span class="log-date"></span>
+      </div>
+      <div class="admin-item-details">
+        <p class="log-action"></p>
+      </div>
+    </div>
+  </template>
+
+  <script src="main.js"></script>
+</body>
+</html>
