@@ -300,22 +300,8 @@
   <script src="database.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-      // Check if admin is logged in
-      const loggedInUser = localStorage.getItem('chickenTrackerCurrentUser');
-      
-      if (!loggedInUser) {
-        window.location.href = 'admin.html';
-        return;
-      }
-      
-      const user = JSON.parse(loggedInUser);
-      if (!user.isAdmin) {
-        window.location.href = 'index.html';
-        return;
-      }
-      
-      // Initialize database
-      window.dbManager = DatabaseManager.init();
+      // Initialize without login check
+      window.dbManager = await DatabaseManager.init();
       
       // Set dark mode if previously used
       if (localStorage.getItem('darkMode') === 'true') {
@@ -347,7 +333,7 @@
           
           // Logout
           document.getElementById('admin-logout-btn').addEventListener('click', () => {
-            this.logActivity(user.id, 'Admin logged out');
+            this.logActivity(0, 'Admin logged out');
             localStorage.removeItem('chickenTrackerCurrentUser');
             window.location.href = 'admin.html';
           });
@@ -557,7 +543,7 @@
           };
           
           await dbManager.createLog({
-            userId: user.id,
+            userId: 0,
             action: `Generated activation code for ${email}`,
             deviceInfo: deviceInfo.deviceName,
             timestamp: new Date().toISOString()

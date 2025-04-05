@@ -7,9 +7,7 @@ const ChickenTracker = {
   },
   
   async init() {
-    // Only initialize if user is logged in
-    if (!AuthManager.isLoggedIn) return;
-  
+    // Initialize without checking for login
     await this.loadData();
     this.setupEventListeners();
     this.setupSubscriptions();
@@ -28,13 +26,11 @@ const ChickenTracker = {
   },
   
   async loadData() {
-    // User-specific data using their ID
-    const userId = AuthManager.currentUser.id;
-    
+    // Load all data instead of user-specific data
     try {
-      this.data.incubations = await dbManager.getIncubations(userId);
-      this.data.medications = await dbManager.getMedications(userId);
-      this.data.feedings = await dbManager.getFeedings(userId);
+      this.data.incubations = await dbManager.getIncubations();
+      this.data.medications = await dbManager.getMedications();
+      this.data.feedings = await dbManager.getFeedings();
     } catch (error) {
       console.error("Error loading data:", error);
       this.showNotification("Error loading data. Please try refreshing the page.");
@@ -42,10 +38,8 @@ const ChickenTracker = {
   },
   
   setupSubscriptions() {
-    const userId = AuthManager.currentUser.id;
-    
-    // Subscribe to incubations changes
-    dbManager.room.collection('incubations').filter({userId: userId}).subscribe((incubations) => {
+    // Subscribe to all data changes without user filtering
+    dbManager.room.collection('incubations').subscribe((incubations) => {
       this.data.incubations = incubations.map(inc => ({
         ...inc,
         startDate: new Date(inc.startDate),
@@ -57,7 +51,7 @@ const ChickenTracker = {
     });
     
     // Subscribe to medications changes
-    dbManager.room.collection('medications').filter({userId: userId}).subscribe((medications) => {
+    dbManager.room.collection('medications').subscribe((medications) => {
       this.data.medications = medications.map(med => ({
         ...med,
         dateGiven: new Date(med.dateGiven),
@@ -69,7 +63,7 @@ const ChickenTracker = {
     });
     
     // Subscribe to feedings changes
-    dbManager.room.collection('feedings').filter({userId: userId}).subscribe((feedings) => {
+    dbManager.room.collection('feedings').subscribe((feedings) => {
       this.data.feedings = feedings.map(feed => ({
         ...feed,
         date: new Date(feed.date)
@@ -92,7 +86,6 @@ const ChickenTracker = {
     hatchDate.setDate(hatchDate.getDate() + 21);
     
     const newIncubation = {
-      userId: AuthManager.currentUser.id,
       batchName,
       startDate: startDate.toISOString(),
       hatchDate: hatchDate.toISOString(),
@@ -143,7 +136,6 @@ const ChickenTracker = {
     const nextSchedule = nextScheduleInput ? new Date(nextScheduleInput) : null;
     
     const newMedication = {
-      userId: AuthManager.currentUser.id,
       name,
       dateGiven: dateGiven.toISOString(),
       notes,
@@ -178,7 +170,6 @@ const ChickenTracker = {
     const notes = document.getElementById('feed-notes').value;
     
     const newFeeding = {
-      userId: AuthManager.currentUser.id,
       date: date.toISOString(),
       feedType,
       amount,
@@ -769,11 +760,6 @@ const ChickenTracker = {
     notificationText.textContent = message;
     notification.classList.add('show');
     
-    // Log the notification as activity
-    if (AuthManager.currentUser) {
-      AuthManager.logActivity(AuthManager.currentUser.id, message);
-    }
-    
     // Auto hide after 5 seconds
     setTimeout(() => {
       notification.classList.remove('show');
@@ -854,290 +840,21 @@ const ChickenTracker = {
   }
 };
 
-const AuthManager = {
-  isLoggedIn: false,
-  currentUser: null,
-  isAdmin: false,
-  
-  async init() {
-    // Initialize database
-    window.dbManager = await DatabaseManager.init();
-    
-    this.setupAuthListeners();
-    await this.checkLoggedInStatus();
-    
-    // Initialize with default admin if none exists
-    const users = await dbManager.getUsers();
-    if (users.length === 0) {
-      await this.createDefaultAdmin();
-    }
-  },
-  
-  async createDefaultAdmin() {
-    const adminUser = {
-      name: 'Admin',
-      email: 'alexis02',
-      password: 'alektit02',
-      isAdmin: true,
-      registerDate: new Date().toISOString(),
-      lastLogin: new Date().toISOString()
-    };
-    
-    await dbManager.createUser(adminUser);
-  },
-  
-  setupAuthListeners() {
-    // Switch between login and register screens
-    document.getElementById('show-register').addEventListener('click', (e) => {
-      e.preventDefault();
-      document.getElementById('login-screen').classList.remove('active');
-      document.getElementById('register-screen').classList.add('active');
-    });
-    
-    document.getElementById('show-login').addEventListener('click', (e) => {
-      e.preventDefault();
-      document.getElementById('register-screen').classList.remove('active');
-      document.getElementById('login-screen').classList.add('active');
-    });
-    
-    // Admin login redirect
-    document.getElementById('admin-login-btn').addEventListener('click', (e) => {
-      e.preventDefault();
-      window.location.href = 'admin.html';
-    });
-    
-    // Form submissions
-    document.getElementById('login-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.loginUser();
-    });
-    
-    document.getElementById('register-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.registerUser();
-    });
-    
-    // Logout
-    document.getElementById('logout-btn').addEventListener('click', () => {
-      this.logoutUser();
-    });
-    
-    // Admin form
-    document.getElementById('activation-form')?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.generateActivationCode();
-    });
-    
-    // Dark mode toggle
-    document.getElementById('dark-mode-toggle').addEventListener('click', () => {
-      document.body.classList.toggle('dark-mode');
-      localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-    });
-  },
-  
-  async checkLoggedInStatus() {
-    const loggedInUser = localStorage.getItem('chickenTrackerCurrentUser');
-    
-    if (loggedInUser) {
-      try {
-        const user = JSON.parse(loggedInUser);
-        
-        // Verify user still exists in database
-        const userFromDb = await dbManager.findUserByEmail(user.email);
-        if (!userFromDb) {
-          // User no longer exists in database
-          localStorage.removeItem('chickenTrackerCurrentUser');
-          return;
-        }
-        
-        this.isLoggedIn = true;
-        this.currentUser = user;
-        this.isAdmin = user.isAdmin;
-        
-        // Update UI for logged in user
-        document.getElementById('current-user').textContent = user.name;
-        document.getElementById('auth-container').style.display = 'none';
-        
-        // Show admin button if admin
-        if (user.isAdmin) {
-          document.querySelectorAll('.admin-only').forEach(el => {
-            el.style.display = 'block';
-          });
-        }
-        
-        // Apply dark mode if previously set
-        if (localStorage.getItem('darkMode') === 'true') {
-          document.body.classList.add('dark-mode');
-        }
-        
-        // Update device info
-        const deviceInfo = {
-          userAgent: navigator.userAgent,
-          deviceName: this.getDeviceName(),
-        };
-        await dbManager.registerDevice(user.id, deviceInfo);
-        
-        // Log activity
-        await this.logActivity(user.id, 'User session restored', deviceInfo.deviceName);
-        
-        // Initialize chicken tracker
-        await ChickenTracker.init();
-      } catch (error) {
-        console.error("Error checking logged in status:", error);
-        localStorage.removeItem('chickenTrackerCurrentUser');
-      }
-    }
-  },
-  
-  async logActivity(userId, action, deviceInfo = 'Unknown device') {
-    const log = {
-      userId,
-      action,
-      deviceInfo,
-      timestamp: new Date().toISOString()
-    };
-    
-    await dbManager.createLog(log);
-  },
-  
-  getDeviceName() {
-    const userAgent = navigator.userAgent;
-    let deviceName = 'Unknown Device';
-    
-    if (/Android/i.test(userAgent)) {
-      deviceName = 'Android Device';
-    } else if (/iPhone|iPad|iPod/i.test(userAgent)) {
-      deviceName = 'iOS Device';
-    } else if (/Windows/i.test(userAgent)) {
-      deviceName = 'Windows Device';
-    } else if (/Mac/i.test(userAgent)) {
-      deviceName = 'Mac Device';
-    } else if (/Linux/i.test(userAgent)) {
-      deviceName = 'Linux Device';
-    }
-    
-    return deviceName;
-  },
-  
-  async loginUser() {
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    
-    try {
-      const users = await dbManager.getUsers();
-      const user = users.find(u => (u.email === email || email === 'alexis02') && u.password === password);
-      
-      if (user) {
-        this.isLoggedIn = true;
-        this.currentUser = user;
-        this.isAdmin = user.isAdmin;
-        
-        // Update last login
-        await dbManager.updateUserLastLogin(user.id);
-        
-        // Register device information
-        const deviceInfo = {
-          userAgent: navigator.userAgent,
-          deviceName: this.getDeviceName(),
-        };
-        await dbManager.registerDevice(user.id, deviceInfo);
-        
-        // Store login status
-        localStorage.setItem('chickenTrackerCurrentUser', JSON.stringify(user));
-        
-        // Update UI
-        document.getElementById('current-user').textContent = user.name;
-        document.getElementById('auth-container').style.display = 'none';
-        
-        // Show admin button if admin
-        if (user.isAdmin) {
-          document.querySelectorAll('.admin-only').forEach(el => {
-            el.style.display = 'block';
-          });
-        }
-        
-        // Log activity
-        await this.logActivity(user.id, 'User logged in', deviceInfo.deviceName);
-        
-        // Initialize chicken tracker
-        await ChickenTracker.init();
-      } else {
-        alert('Invalid email or password');
-      }
-    } catch (error) {
-      console.error("Error during login:", error);
-      alert('An error occurred during login. Please try again.');
-    }
-  },
-  
-  async registerUser() {
-    const name = document.getElementById('register-name').value;
-    const email = document.getElementById('register-email').value;
-    const password = document.getElementById('register-password').value;
-    const activationCode = document.getElementById('activation-code').value;
-    
-    // Check if email already registered
-    const existingUser = await dbManager.findUserByEmail(email);
-    if (existingUser) {
-      alert('Email already registered');
-      return;
-    }
-    
-    // Verify activation code
-    const code = await dbManager.findCode(activationCode, email);
-    if (!code) {
-      alert('Invalid activation code');
-      return;
-    }
-    
-    // Create new user
-    const newUser = {
-      name,
-      email,
-      password,
-      isAdmin: false,
-      registerDate: new Date().toISOString(),
-      lastLogin: new Date().toISOString()
-    };
-    
-    // Add user to database
-    const createdUser = await dbManager.createUser(newUser);
-    
-    // Mark code as used
-    await dbManager.markCodeAsUsed(code.id);
-    
-    // Register device information
-    const deviceInfo = {
-      userAgent: navigator.userAgent,
-      deviceName: this.getDeviceName(),
-    };
-    await dbManager.registerDevice(createdUser.id, deviceInfo);
-    
-    // Log activity
-    await this.logActivity(createdUser.id, 'New user registered', deviceInfo.deviceName);
-    
-    // Show success and switch to login
-    alert('Registration successful! You can now log in.');
-    document.getElementById('register-screen').classList.remove('active');
-    document.getElementById('login-screen').classList.add('active');
-    document.getElementById('register-form').reset();
-  },
-  
-  async logoutUser() {
-    this.isLoggedIn = false;
-    this.currentUser = null;
-    this.isAdmin = false;
-    localStorage.removeItem('chickenTrackerCurrentUser');
-    document.getElementById('auth-container').style.display = 'block';
-    document.getElementById('current-user').textContent = '';
-    document.querySelectorAll('.admin-only').forEach(el => {
-      el.style.display = 'none';
-    });
-  }
-};
-
-// Initialize both managers when document is ready
 document.addEventListener('DOMContentLoaded', async () => {
-  await AuthManager.init();
-  // ChickenTracker will be initialized after successful login
+  // Initialize database
+  window.dbManager = await DatabaseManager.init();
+  
+  // Apply dark mode if previously set
+  if (localStorage.getItem('darkMode') === 'true') {
+    document.body.classList.add('dark-mode');
+  }
+  
+  // Dark mode toggle
+  document.getElementById('dark-mode-toggle').addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+  });
+  
+  // Initialize chicken tracker directly
+  await ChickenTracker.init();
 });

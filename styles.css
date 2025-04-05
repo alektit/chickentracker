@@ -90,10 +90,6 @@ main {
   margin: 0 auto;
 }
 
-.admin-only {
-  display: none;
-}
-
 /* View Sections */
 .view {
   display: none;
@@ -593,6 +589,10 @@ body.dark-mode .admin-item {
   margin-bottom: 0.5rem;
 }
 
+.admin-link {
+  margin-top: 0.5rem;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   header h1 {
@@ -666,8 +666,4 @@ body.dark-mode .auth-screen {
 
 .auth-link a:hover {
   text-decoration: underline;
-}
-
-.admin-link {
-  margin-top: 0.5rem;
 }

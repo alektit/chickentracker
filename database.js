@@ -5,7 +5,7 @@ const DatabaseManager = {
     // Initialize WebsimSocket connection
     this.room = new WebsimSocket();
     this.setupEventHandlers();
-    return this;
+    return Promise.resolve(this);  // Return a promise to ensure async completion
   },
   
   setupEventHandlers() {
@@ -23,35 +23,9 @@ const DatabaseManager = {
     };
   },
   
-  // User Management
-  async getUsers() {
-    return this.room.collection('users').getList();
-  },
-  
-  async createUser(userData) {
-    return await this.room.collection('users').create(userData);
-  },
-  
-  async findUserByEmail(email) {
-    const users = await this.getUsers();
-    return users.find(user => user.email === email);
-  },
-  
-  async updateUserLastLogin(userId) {
-    const users = await this.getUsers();
-    const user = users.find(u => u.id === userId);
-    if (user) {
-      return await this.room.collection('users').update(user.id, {
-        lastLogin: new Date().toISOString(),
-        lastDevice: navigator.userAgent
-      });
-    }
-    return null;
-  },
-  
   // Chicken Tracker Data
-  async getIncubations(userId) {
-    const incubations = await this.room.collection('incubations').filter({userId: userId}).getList();
+  async getIncubations() {
+    const incubations = await this.room.collection('incubations').getList();
     // Convert date strings to Date objects
     return incubations.map(inc => ({
       ...inc,
@@ -72,8 +46,8 @@ const DatabaseManager = {
     return await this.room.collection('incubations').delete(id);
   },
   
-  async getMedications(userId) {
-    const medications = await this.room.collection('medications').filter({userId: userId}).getList();
+  async getMedications() {
+    const medications = await this.room.collection('medications').getList();
     // Convert date strings to Date objects
     return medications.map(med => ({
       ...med,
@@ -90,8 +64,8 @@ const DatabaseManager = {
     return await this.room.collection('medications').delete(id);
   },
   
-  async getFeedings(userId) {
-    const feedings = await this.room.collection('feedings').filter({userId: userId}).getList();
+  async getFeedings() {
+    const feedings = await this.room.collection('feedings').getList();
     // Convert date strings to Date objects
     return feedings.map(feed => ({
       ...feed,
@@ -105,67 +79,5 @@ const DatabaseManager = {
   
   async deleteFeeding(id) {
     return await this.room.collection('feedings').delete(id);
-  },
-  
-  // Activation Codes
-  async getCodes() {
-    return this.room.collection('activationCodes').getList();
-  },
-  
-  async createCode(codeData) {
-    return await this.room.collection('activationCodes').create(codeData);
-  },
-  
-  async findCode(code, email) {
-    const codes = await this.getCodes();
-    return codes.find(c => c.code === code && c.email === email && !c.used);
-  },
-  
-  async markCodeAsUsed(codeId) {
-    return await this.room.collection('activationCodes').update(codeId, { used: true });
-  },
-  
-  // Activity Logs
-  async getLogs() {
-    return this.room.collection('activityLogs').getList();
-  },
-  
-  async getUserLogs(userId) {
-    return this.room.collection('activityLogs').filter({userId: userId}).getList();
-  },
-  
-  async createLog(logData) {
-    return await this.room.collection('activityLogs').create(logData);
-  },
-  
-  // Device Tracking
-  async getDevices() {
-    return this.room.collection('devices').getList();
-  },
-  
-  async getUserDevices(userId) {
-    return this.room.collection('devices').filter({userId: userId}).getList();
-  },
-  
-  async registerDevice(userId, deviceInfo) {
-    const devices = await this.getDevices();
-    const existingDevice = devices.find(d => 
-      d.userId === userId && d.userAgent === deviceInfo.userAgent);
-    
-    if (existingDevice) {
-      return await this.room.collection('devices').update(existingDevice.id, {
-        lastSeen: new Date().toISOString(),
-        ipAddress: deviceInfo.ipAddress || 'unknown'
-      });
-    } else {
-      return await this.room.collection('devices').create({
-        userId,
-        userAgent: deviceInfo.userAgent,
-        deviceName: deviceInfo.deviceName || 'Unknown Device',
-        firstSeen: new Date().toISOString(),
-        lastSeen: new Date().toISOString(),
-        ipAddress: deviceInfo.ipAddress || 'unknown'
-      });
-    }
   }
 };
